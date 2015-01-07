@@ -92,14 +92,13 @@ module.exports = function(app) {
             /*create a Box using the user parsed info.  TODO: Think OOP. */
             var newBox = new Box();
             var creatorBoxKey = alphaNumUnique();
-            newBox.creator = {
-              email: userEmail, urlKey: creatorBoxKey, read: false, userid: data._id
-            };
-            newBox.recipients = [];
+            newBox.members = [{
+              email: userEmail, urlKey: creatorBoxKey, unread: false, userid: data._id
+            }];
             newBox.boxKey = alphaNumUnique();
             for (var j = 0; j < parsedEmails.length; j++) {
-              newBox.recipients.push({email: parsedEmails[j], urlKey: '', read: false});
-              newBox.recipients[j].urlKey = alphaNumUnique();
+              newBox.members.push({email: parsedEmails[j], urlKey: '', unread: 1});
+              newBox.members[j].urlKey = alphaNumUnique();
             }
             newBox.subject = jsonParsed.subject;
             newBox.date = new Date();

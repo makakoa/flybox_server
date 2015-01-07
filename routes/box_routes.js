@@ -1,11 +1,12 @@
 'use strict';
 
 var Box = require('../models/box');
+var Post = require('../models/post');
 
 module.exports = function(app, jwtAuth) {
   //get all boxes involed in
   app.get('/api/boxes', jwtAuth, function(req, res) {
-    Box.find({recipients: {$elemMatch: {email: req.user.email}}}, function(err, data) {
+    Box.find({members: {$elemMatch: {email: req.user.email}}}, function(err, data) {
       if (err) {
         console.log(err);
         return res.status(500).send('Cannot retrieve threads');
@@ -13,13 +14,13 @@ module.exports = function(app, jwtAuth) {
       var response = [];
       data.forEach(function(box) {
         var key;
-        box.recipients.forEach(function(recipient) {
-          if (req.user.email === recipient.email) {
-            key = recipient.urlKey;
+        box.members.forEach(function(member) {
+          if (req.user.email === member.email) {
+            key = member.urlKey;
           }
         });
         response.push({
-          email: req.user.email,
+          email: box.members[0].email,
           subject: box.subject,
           date: box.date,
           boxKey: box.boxKey,
@@ -29,10 +30,23 @@ module.exports = function(app, jwtAuth) {
       res.json(response);
     });
   });
+  
+  app.post('/api/boxes', jwtAuth, function(req, res) {
+    var post = new Post(req.body.post);
+    var box = new Box();
+    try {
+      box.subject = req.body.subject;
+      box.members = [{email: req.user.email, unread: 0}];
+      req.body.members.forEach(member) {
+        box.members.push({email: member, unread: 0});
+      }
+      box.thread = [post._id];
+    }
+  })
 
   //get box from personal url
   app.get('/api/n/:boxkey/:userkey', function(req, res) {
-    Box.findOne({boxKey: req.params.boxkey, recipients: {$elemMatch: {urlKey: req.params.userkey}}}, function(err, data) {
+    Box.findOne({boxKey: req.params.boxkey, members: {$elemMatch: {urlKey: req.params.userkey}}}, function(err, data) {
       if (err) {
         console.log(err);
         return res.status(500).send('Cannot retrieve box');
@@ -49,9 +63,9 @@ module.exports = function(app, jwtAuth) {
         return res.status(500).send('No box');
       }
       var newPost = {};
-      current.recipients.forEach(function(recipient) { //TODO: add catch for creator post
-        if (recipient.urlKey === req.params.userkey) {
-          newPost.author = recipient.email;
+      current.members.forEach(function(member) { //TODO: add catch for creator post
+        if (member.urlKey === req.params.userkey) {
+          newPost.author = member.email;
         }
       });
       newPost.text = req.body.text;
@@ -70,9 +84,9 @@ module.exports = function(app, jwtAuth) {
         return res.status(500).send('No box');
       }
       var author;
-      current.recipients.forEach(function(recipient) { //TODO: redundant code with line 33
-        if (recipient.urlKey === req.params.userkey) {
-          author = recipient.email;
+      current.members.forEach(function(member) { //TODO: redundant code with line 33
+        if (member.urlKey === req.params.userkey) {
+          author = member.email;
         }
       });
       var oldPost = current.thread[req.body.index];
@@ -85,7 +99,7 @@ module.exports = function(app, jwtAuth) {
     });
   });
 
-  //delete box
+  //delete box TODO: take out this route, replace with leave box
   app.delete('/api/n/:boxkey/', jwtAuth, function(req, res) {
     Box.findOne({boxKey: req.params.boxkey}, function(err, current) {
       if (err) {
